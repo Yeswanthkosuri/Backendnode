@@ -4,38 +4,58 @@ const jwt = require('jsonwebtoken')
 
 exports.register = async(req,res)=>{
 try{
+    const { name, email, password } = req.body;
+
+    if (!name || !email || !password) {
+        return res.status(400).json({
+            message: "name, email and password are required",
+        });
+    }
 
     const extistinguser = await User.findOne({
-        email:req.body.email
+        email
     })
     if(extistinguser){
        return res.status(400).json({
         message:"user already registered"
        })
     }
-const hashpswrd = await  bcrypt.hash(req.body.password,10)
+const hashpswrd = await  bcrypt.hash(password,10)
 
     const user = await User.create({
-        name: req.body.name,
-        email:req.body.email,
+        name,
+        email,
         password:hashpswrd
     })
 
     res.status(201).json({
     message: "register done......",
-    user
+    user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+    }
  })
 
 }catch(err){
-
+    res.status(500).json({
+        message: err.message,
+    })
 }
 }
 
 exports.login = async (req,res)=>{
 try{
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+        return res.status(400).json({
+            message: "email and password are required",
+        });
+    }
 
     const user = await User.findOne({
-        email:req.body.email
+        email
     })
 
     if(!user){
@@ -45,7 +65,7 @@ return res.status(400).json({
     }
 
     const isMatch = await bcrypt.compare(
-        req.body.password,
+        password,
         user.password
     )
 
@@ -59,7 +79,7 @@ return res.status(400).json({
         {
             id:user._id
         },
-        "mykeypswrd",
+        process.env.JWT_SECRET || "mykeypswrd",
         {
             expiresIn: "7d"
         }
@@ -67,13 +87,24 @@ return res.status(400).json({
 
     res.json({
          message: "login done...",
-        token
+        token,
+        user: {
+            id: user._id,
+            name: user.name,
+            email: user.email,
+        }
     })
 
-
-
-
 }catch(err){
-
+    res.status(500).json({
+        message: err.message,
+    })
 }
+}
+
+exports.getProfile = async (req, res) => {
+    res.status(200).json({
+        message: "profile details",
+        user: req.user,
+    });
 }
